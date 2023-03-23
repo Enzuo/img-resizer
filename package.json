@@ -12,6 +12,9 @@
     "imgresizer": ".index.js"
   },
   "dependencies": {
+    "glob": "^9.3.2",
+    "prompt-sync": "^4.2.0",
+    "sharp": "^0.31.3",
     "yargs": "13.2"
   }
 }

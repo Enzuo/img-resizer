@@ -1,6 +1,16 @@
-## Install
+## Dev
+```
+node . -f data
+```
+
+## Install globally
 ```
 npm install -g .
+```
+
+## Run
+```
+imgresize -f c:\test
 ```
 
 ## Uninstall

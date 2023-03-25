@@ -70,7 +70,8 @@ async function resizeFiles(files){
         let filePath = file.path
 
         console.log("resizing", filePath)
-        await sharp(path.join(IMG_FOLDER, filePath))
+        // failOnError : https://github.com/lovell/sharp/issues/1578
+        await sharp(path.join(IMG_FOLDER, filePath), { failOnError : false})
         .withMetadata()
         .resize(2000, 2000, {
             fit: sharp.fit.inside,
@@ -80,10 +81,11 @@ async function resizeFiles(files){
             quality: 70,
         })
         .toBuffer(function(err, buffer) {
+            // console.error(err)
             fs.mkdirSync(path.join(COPY_FOLDER,path.parse(filePath).dir), { recursive: true })
             try {
-                // fs.copyFileSync(path.join(IMG_FOLDER,filePath), path.join(COPY_FOLDER,filePath))
-                fs.copyFileSync(path.join(IMG_FOLDER,filePath), path.join(COPY_FOLDER,filePath), fs.constants.COPYFILE_EXCL )
+                fs.copyFileSync(path.join(IMG_FOLDER,filePath), path.join(COPY_FOLDER,filePath))
+                // fs.copyFileSync(path.join(IMG_FOLDER,filePath), path.join(COPY_FOLDER,filePath), fs.constants.COPYFILE_EXCL )
                 fs.writeFileSync(path.join(IMG_FOLDER,filePath), buffer)
             }
             catch (e) {

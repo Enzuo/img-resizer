@@ -19,7 +19,7 @@ const IMG_FOLDER = options.folder.replace(/\/$/, "") // Remove trailing /
 const COPY_FOLDER = IMG_FOLDER + '_hq'
 const RESIZE_SIZE = 2000
 const RESIZE_QUALITY = 70
-const MAX_SIZE = 5000
+const MAX_SIZE = 500000
 
 console.log(`Looking for images to resize in folder : ${IMG_FOLDER}`)
 

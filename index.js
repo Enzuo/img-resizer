@@ -5,6 +5,8 @@ const path = require("path")
 const yargs = require("yargs")
 const sharp = require('sharp')
 const prompt = require('prompt-sync')({ sigint: true })
+const cliProgress  = require('cli-progress')
+
 
 
 
@@ -68,45 +70,83 @@ function readDirectory(basePath, dirPath = '') {
 
 
 async function resizeFiles(files) {
-	const resizeOperations = files.map((file) => {
-		return async () => {
-		  const filePath = file.path;
-		  try {
-			console.log(`Resizing ${filePath}...`);
-			const buffer = await sharp(path.join(IMG_FOLDER, filePath), {
-			  // Use `failOnError: false` to allow processing of images that are corrupt or have unsupported metadata
-			  failOnError: false,
-			})
-			  .withMetadata()
-			  .resize(RESIZE_SIZE, RESIZE_SIZE, {
-				fit: sharp.fit.inside,
-				withoutEnlargement: true,
-			  })
-			  .jpeg({
-				quality: RESIZE_QUALITY,
-			  })
-			  .toBuffer();
-			await fs.promises.mkdir(path.join(COPY_FOLDER, path.parse(filePath).dir), {
-			  recursive: true,
-			});
-			await fs.promises.copyFile(
-			  path.join(IMG_FOLDER, filePath),
-			  path.join(COPY_FOLDER, filePath)
-			);
-			try {
-			  await fs.promises.writeFile(path.join(IMG_FOLDER, filePath), buffer);
-			  console.log(`Resized ${filePath} successfully.`);
-			} catch (err) {
-			  console.error(`Could not write resized file ${filePath}: ${err.message}`);
-			  await fs.promises.unlink(path.join(COPY_FOLDER, filePath));
-			}
-		  } catch (err) {
-			console.error(`Could not resize ${filePath}: ${err.message}`);
-		  }
-		};
-	  });
+	const progressBar = new cliProgress.SingleBar({
+		format: '{bar} | {percentage}% | {value}/{total} files processed',
+		barCompleteChar: '\u2588',
+		barIncompleteChar: '\u2591',
+		clearOnComplete: true,
+	  }, files.length);
+	  progressBar.start(files.length)
+
+	const resizeOperations = files.map((file) => resizeFile(file).then((res) => {progressBar.increment(); return res}))
 	
-	  for (const operation of resizeOperations) {
-		await operation();
+	  const results = await Promise.all(resizeOperations);
+	  progressBar.stop();
+	  console.log(generateTable(results));
+  }
+
+  async function resizeFile(file) {
+	const filePath = file.path;
+	try {
+	  // console.log(`Resizing ${filePath}...`);
+	  const buffer = await sharp(path.join(IMG_FOLDER, filePath), {
+		// Use `failOnError: false` to allow processing of images that are corrupt or have unsupported metadata
+		failOnError: false,
+	  })
+		.withMetadata()
+		.resize(RESIZE_SIZE, RESIZE_SIZE, {
+		  fit: sharp.fit.inside,
+		  withoutEnlargement: true,
+		})
+		.jpeg({
+		  quality: RESIZE_QUALITY,
+		})
+		.toBuffer();
+	  await fs.promises.mkdir(path.join(COPY_FOLDER, path.parse(filePath).dir), {
+		recursive: true,
+	  });
+	  await fs.promises.copyFile(
+		path.join(IMG_FOLDER, filePath),
+		path.join(COPY_FOLDER, filePath)
+	  );
+	  try {
+		await fs.promises.writeFile(path.join(IMG_FOLDER, filePath), buffer)
+		return { filePath, error: null };
+	  } catch (err) {
+		await fs.promises.unlink(path.join(COPY_FOLDER, filePath));
+		return { filePath, error: err };
 	  }
+	} catch (err) {
+	  return { filePath, error: err };
+	}
+  }
+
+
+  function generateTable(data) {
+	// Calculate the maximum length of each column
+	const maxFilePathLength = Math.max(...data.map(({ filePath }) => filePath.length));
+	const maxResizedLength = 7
+	const maxErrorLength = Math.max(...data.map(({ error }) => error ? error.message.length : 0));
+  
+	// Build the header row
+	const filePathHeader = 'Filename'.padEnd(maxFilePathLength);
+	const resizedHeader = 'Resized'.padEnd(maxResizedLength);
+	const errorHeader = 'Error'.padEnd(maxErrorLength);
+	const header = `| ${filePathHeader} | ${resizedHeader} | ${errorHeader} |`;
+  
+	// Build the divider row
+	const filePathDivider = '-'.repeat(maxFilePathLength+2);
+	const resizedDivider = '-'.repeat(maxResizedLength+2);
+	const errorDivider = '-'.repeat(maxErrorLength+2);
+	const divider = `+${filePathDivider}+${resizedDivider}+${errorDivider}+`;
+  
+	// Build the data rows
+	const rows = data.map(({ filePath, resized, error }) => {
+	  const resizedStr = (error ? 'No': 'Yes').padEnd(maxResizedLength);
+	  const errorStr = error ? error.message.padEnd(maxErrorLength) : '';
+	  return `| ${filePath.padEnd(maxFilePathLength)} | ${resizedStr} | ${errorStr} |`;
+	});
+  
+	// Combine everything into a single string
+	return `${header}\n${divider}\n${rows.join('\n')}\n${divider}\n`;
   }

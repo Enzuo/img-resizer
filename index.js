@@ -15,6 +15,10 @@ const options = yargs
 
 const IMG_FOLDER = options.folder.replace(/\/$/, "") // Remove trailing /
 const COPY_FOLDER = IMG_FOLDER+'_hq'
+const RESIZE_SIZE = 2000
+const RESIZE_QUALITY = 70
+const MAX_SIZE = 500000
+
 console.log(`Looking for images to resize in folder : ${IMG_FOLDER}`)
 
 
@@ -30,7 +34,6 @@ console.log(`Looking for images to resize in folder : ${IMG_FOLDER}`)
 let files = readDirectory(IMG_FOLDER)
 console.log(`I found those ${files.length} files`, files)
 
-const MAX_SIZE = 500000
 let filesToResize = files.filter(f => f.size > MAX_SIZE && f.isImg)
 console.log(`About to resize ${filesToResize.length} images files`)
 console.log(`Located in : "${IMG_FOLDER}"`)
@@ -73,12 +76,12 @@ async function resizeFiles(files){
         // failOnError : https://github.com/lovell/sharp/issues/1578
         await sharp(path.join(IMG_FOLDER, filePath), { failOnError : false})
         .withMetadata()
-        .resize(2000, 2000, {
+        .resize(RESIZE_SIZE, RESIZE_SIZE, {
             fit: sharp.fit.inside,
             withoutEnlargement: true,
         })
         .jpeg({
-            quality: 70,
+            quality: RESIZE_QUALITY,
         })
         .toBuffer(function(err, buffer) {
             // console.error(err)

@@ -1,3 +1,5 @@
+Resize all the photos in a folder and its subfolder
+
 ## Dev
 ```
 node . -f data
